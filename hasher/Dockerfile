@@ -7,6 +7,6 @@ COPY Gemfile Gemfile.lock ./
 
 RUN bundle install
 
-COPY hasher.rb .
+COPY hasher.rb hasher_module.rb ./
 
 CMD ["ruby", "./hasher.rb"]
