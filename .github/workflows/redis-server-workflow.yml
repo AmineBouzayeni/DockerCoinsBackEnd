@@ -1,8 +1,0 @@
-name: Dockercoins CI/CD redis-server component
-run-name: Dockercoins redis-server CI/CD
-on: [push]
-jobs:
-  BuildAndTest:
-  BuildScanAndPushImage:
-  DeployCanary:
-  DeployToProduction:

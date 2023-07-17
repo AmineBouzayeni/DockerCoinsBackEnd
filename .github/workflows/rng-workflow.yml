@@ -1,8 +1,0 @@
-name: Dockercoins CI/CD rng component
-run-name: Dockercoins rng CI/CD
-on: [push]
-jobs:
-  BuildAndTest:
-  BuildScanAndPushImage:
-  DeployCanary:
-  DeployToProduction:
