@@ -1,0 +1,8 @@
+name: Dockercoins CI/CD worker component
+run-name: Dockercoins worker CI/CD
+on: [push]
+jobs:
+  BuildAndTest:
+  BuildScanAndPushImage:
+  DeployCanary:
+  DeployToProduction:
