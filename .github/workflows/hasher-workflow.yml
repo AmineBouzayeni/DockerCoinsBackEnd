@@ -32,20 +32,22 @@ jobs:
             Hasher version 0.0.1.
           draft: false
           prerelease: false  
-      - name: Set output
-        id: vars
+      - name: Set current branch
+        id: current_branch
         run: |
           echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
           echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+      - uses: actions-ecosystem/action-get-latest-tag@v1
+        id: get_latest_tag
       - name: Calculate image tag
         id: calculate_tag
         run: |
-          currentBranch=${{ steps.vars.outputs.branch }}
+          currentBranch=${{ steps.current_branch.outputs.branch }}
           if [[ $currentBranch == 'main' ]]
             then
               tag=${{ steps.vars.outputs.tag_name }}
           else
-            tag=${{ github.sha }}-${{ steps.vars.outputs.tag_name }}
+            tag=${{ github.sha }}-${{ steps.get_latest_tag.outputs.tag }}
           fi   
           echo "tag=$tag" >> $GITHUB_OUTPUT 
       - name: Login to Docker Hub
@@ -60,7 +62,7 @@ jobs:
           file: hasher/Dockerfile
           tags: |
             mbouzayeni/hasher:${{ steps.calculate_tag.outputs.tag }}
-          cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
-          cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
+          # cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
+          # cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
   # DeployCanary:
   # DeployToProduction:
