@@ -5,6 +5,7 @@ jobs:
   Test:
     name: Run Unit Tests.
     runs-on: ubuntu-latest
+    working-directory: hasher
     steps:
     - name: Checkout code
       uses: actions/checkout@master
@@ -14,6 +15,7 @@ jobs:
   BuildScanAndPushImage:
     name: Build and push the docker image.
     runs-on: ubuntu-latest
+    working-directory: hasher
     permissions: write-all
     needs: Test
     steps:
@@ -24,8 +26,8 @@ jobs:
       - name: Get current version
         id: get_current_version
         run: |
-          current_version=$(cat hasher/VERSION)
-          echo "currentVersion=$(cat hasher/VERSION)" >> $GITHUB_OUTPUT
+          current_version=$(cat VERSION)
+          echo "currentVersion=$(cat VERSION)" >> $GITHUB_OUTPUT
       - name: Create Release
         id: create_release
         uses: actions/create-release@latest
@@ -63,10 +65,9 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          file: hasher/Dockerfile
           tags: |
             mbouzayeni/hasher:${{ steps.calculate_tag.outputs.tag }}
-          # cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
-          # cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
+          cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
+          cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
   # DeployCanary:
   # DeployToProduction:
