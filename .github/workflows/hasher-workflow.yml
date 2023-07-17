@@ -37,8 +37,6 @@ jobs:
         run: |
           echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
           echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
-      - uses: actions-ecosystem/action-get-latest-tag@v1
-        id: get-latest-tag
       - name: Calculate image tag
         id: calculate_tag
         run: |
