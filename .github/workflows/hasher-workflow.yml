@@ -38,7 +38,7 @@ jobs:
           echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
           echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
       - uses: actions-ecosystem/action-get-latest-tag@v1
-        id: get_latest_tag
+        id: get-latest-tag
       - name: Calculate image tag
         id: calculate_tag
         run: |
@@ -47,7 +47,7 @@ jobs:
             then
               tag=${{ steps.vars.outputs.tag_name }}
           else
-            tag=${{ github.sha }}-${{ steps.get_latest_tag.outputs.tag }}
+            tag=${{ github.sha }}-${{ steps.get-latest-tag.outputs.tag }}
           fi   
           echo "tag=$tag" >> $GITHUB_OUTPUT 
       - name: Login to Docker Hub
