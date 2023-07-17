@@ -57,7 +57,7 @@ jobs:
         with:
           push: true
           tags: |
-            mbouzayeni/hasher:${{ steps.calculate_tag.tag }}
+            mbouzayeni/hasher:${{ steps.calculate_tag.outputs.tag }}
           cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
           cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
   # DeployCanary:
