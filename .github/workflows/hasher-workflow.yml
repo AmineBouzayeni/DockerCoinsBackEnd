@@ -58,5 +58,5 @@ jobs:
             mbouzayeni/hasher:${{ steps.calculate_tag.tag }}
           cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
           cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
-  DeployCanary:
-  DeployToProduction:
+  # DeployCanary:
+  # DeployToProduction:
