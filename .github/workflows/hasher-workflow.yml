@@ -57,6 +57,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
+          file: hasher/Dockerfile
           tags: |
             mbouzayeni/hasher:${{ steps.calculate_tag.outputs.tag }}
           cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
