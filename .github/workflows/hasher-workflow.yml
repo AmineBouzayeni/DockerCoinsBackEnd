@@ -37,15 +37,23 @@ jobs:
         run: |
           echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
           echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+      - name: Get release tag
+        id: get_release_tag
+        uses: cardinalby/git-get-release-action@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          commitSha: ${{ github.sha }}
+    prerelease: false
       - name: Calculate image tag
         id: calculate_tag
         run: |
           currentBranch=${{ steps.current_branch.outputs.branch }}
           if [[ $currentBranch == 'main' ]]
             then
-              tag=${{ steps.vars.outputs.tag_name }}
+              tag=${{ steps.get_release_tag.outputs.tag_name }}
           else
-            tag=${{ github.sha }}-${{ steps.current_branch.outputs.tag }}
+            tag=${{ steps.get_release_tag.outputs.tag_name }}-${{ github.sha }}
           fi   
           echo "tag=$tag" >> $GITHUB_OUTPUT 
       - name: Login to Docker Hub
