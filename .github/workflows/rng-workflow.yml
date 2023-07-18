@@ -1,5 +1,5 @@
-name: Dockercoins CI/CD hasher component
-run-name: Dockercoins hasher CI/CD
+name: Dockercoins CI/CD rng component
+run-name: Dockercoins rng CI/CD
 on: [push]
 jobs:
   Test:
@@ -7,22 +7,22 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: hasher
+        working-directory: rng
     steps:
     - name: Checkout code
       uses: actions/checkout@master
-    - name: Start ephemeral hasher instance
+    - name: Start ephemeral rng instance
       run: |
-        ruby hasher.rb
-    - name: Unit Test Hasher Ruby
+        python rng.py
+    - name: Unit Test Rng
       run: |
-        ruby tests/unit_test.rb
+        pytest
   BuildScanAndPushImage:
     name: Build and push the docker image.
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: hasher
+        working-directory: rng
     permissions: write-all
     needs: Test
     steps:
@@ -75,7 +75,7 @@ jobs:
         with:
           push: true
           tags: |
-            mbouzayeni/hasher:${{ steps.calculate_tag.outputs.tag }}
+            mbouzayeni/rng:${{ steps.calculate_tag.outputs.tag }}
           # cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
           # cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
   # DeployCanary:
