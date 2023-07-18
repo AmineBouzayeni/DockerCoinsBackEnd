@@ -13,6 +13,7 @@ jobs:
       uses: actions/checkout@master
     - name: Start ephemeral rng instance
       run: |
+        pip install -r requirement.txt
         python rng.py
     - name: Unit Test Rng
       run: |

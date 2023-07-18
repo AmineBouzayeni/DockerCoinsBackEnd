@@ -13,6 +13,7 @@ jobs:
       uses: actions/checkout@master
     - name: Start ephemeral hasher instance
       run: |
+        bundle install
         ruby hasher.rb
     - name: Unit Test Hasher Ruby
       run: |
