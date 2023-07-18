@@ -9,7 +9,7 @@ class CustomTest < Test::Unit::TestCase
       assert_equal("200", res.code, 'Get hostname endpoint is working.')
     end
     def test_hash_with_random
-      res = Net::HTTP.post(URI(__URI__+"/random"))
+      res = Net::HTTP.post(URI(__URI__), "random")
       assert_equal("200", res.code, 'Post hash endpoint is working.')
     end  
 end

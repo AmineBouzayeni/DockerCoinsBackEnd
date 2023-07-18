@@ -36,7 +36,7 @@ jobs:
             Hasher version ${{ steps.get_current_version.outputs.currentVersion }}.
           draft: false
           prerelease: false  
-      - name: Set current branch
+      - name: Get current branch
         id: current_branch
         run: |
           echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
@@ -56,8 +56,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Check current directory
-        run: ls -ltrh
       - name: Build and push the Docker image
         uses: docker/build-push-action@v4
         with:
@@ -70,7 +68,7 @@ jobs:
     outputs:
       imageTag: ${{ steps.calculate_tag.outputs.tag }}      
   Test:
-    name: Run Unit Tests.
+    name: Run Smoke Tests.
     runs-on: ubuntu-latest
     needs: BuildScanAndPushImage
     permissions:
@@ -109,12 +107,12 @@ jobs:
     - name: Replace the URI in the test file
       uses: cschleiden/replace-tokens@v1
       with:
-        files: '["rng/tests/unit_test.py"]'
+        files: '["rng/tests/smoke_test.py"]'
         tokenPrefix: __
         tokenSuffix: __
       env:
         URI: "'http://34.79.77.180:30002'"
-    - name: Run tests
+    - name: Run Smoke tests
       run: |
         pip install pytest
         pytest
