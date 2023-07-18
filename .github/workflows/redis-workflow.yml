@@ -92,7 +92,9 @@ jobs:
       with:
         cluster_name: ${{ env.CLUSTER }}
         location: ${{ env.CLUSTER_ZONE }}
-
+    - name: copy the manifest file
+      run: |
+        cp redis-canary-manifest.yml redis-canary-manifest-delete.yml
     - name: Update the image tag & the number of canary replicas to 1
       uses: cschleiden/replace-tokens@v1
       with:
@@ -111,7 +113,7 @@ jobs:
         tokenPrefix: __
         tokenSuffix: __
       env:
-        URI: "'http://34.79.77.180:30003'"
+        URI: "'34.79.77.180'"
     - name: Run Smoke tests
       run: |
         pip install pytest redis
@@ -119,11 +121,11 @@ jobs:
     - name: Update image tag & the number of canary replicas to 0 to delete it
       uses: cschleiden/replace-tokens@v1
       with:
-        files: '["redis_server/redis-canary-manifest.yml"]'
+        files: '["redis_server/redis-canary-manifest-delete.yml"]'
         tokenPrefix: __
         tokenSuffix: __
       env:
         TAG: ${{ needs.BuildScanAndPushImage.outputs.imageTag }}
         REPLICAS: 0   
     - name: Delete redis-canary
-      run: kubectl apply -f redis-canary-manifest.yml
+      run: kubectl apply -f redis-canary-manifest-delete.yml

@@ -21,7 +21,7 @@ metadata:
   labels:
     app: redis-canary
 spec:
-  replicas: 2
+  replicas: __REPLICAS__
   selector:
     matchLabels:
       app: redis-canary
@@ -32,6 +32,8 @@ spec:
     spec:
       containers:
       - name: redis
-        image: mbouzayeni/redis:1.0
+        image: mbouzayeni/redis:__TAG__
         ports:
         - containerPort: 6379
+      nodeSelector:
+        app: medium    

@@ -91,7 +91,9 @@ jobs:
       with:
         cluster_name: ${{ env.CLUSTER }}
         location: ${{ env.CLUSTER_ZONE }}
-
+    - name: copy the manifest file
+      run: |
+        cp hasher-canary-manifest.yml hasher-canary-manifest-delete.yml
     - name: Update the image tag & the number of canary replicas to 1
       uses: cschleiden/replace-tokens@v1
       with:
@@ -117,11 +119,11 @@ jobs:
     - name: Update image tag & the number of canary replicas to 0 to delete it
       uses: cschleiden/replace-tokens@v1
       with:
-        files: '["rng/hasher-canary-manifest.yml"]'
+        files: '["hasher/hasher-canary-manifest-delete.yml"]'
         tokenPrefix: __
         tokenSuffix: __
       env:
         TAG: ${{ needs.BuildScanAndPushImage.outputs.imageTag }}
         REPLICAS: 0   
     - name: Delete rng-canary
-      run: kubectl apply -f hasher-canary-manifest.yml
+      run: kubectl apply -f hasher-canary-manifest-delete.yml
