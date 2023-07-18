@@ -1,8 +1,8 @@
 FROM python:3.10.12-alpine
 
-COPY requirement.txt ./
+COPY rng/requirement.txt ./
 RUN pip install --no-cache-dir -r requirement.txt
 
-COPY rng.py ./
+COPY rng/rng.py ./
 
 CMD ["python", "rng.py"]
