@@ -1,23 +1,10 @@
 name: Dockercoins CI/CD hasher component
 run-name: Dockercoins hasher CI/CD
 on: [push]
+env:
+  CLUSTER: dockercoins-cluster
+  CLUSTER_ZONE: europe-west1-b
 jobs:
-  Test:
-    name: Run Unit Tests.
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: hasher
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@master
-    - name: Start ephemeral hasher instance
-      run: |
-        bundle install
-        ruby hasher.rb
-    - name: Unit Test Hasher Ruby
-      run: |
-        ruby tests/unit_test.rb
   BuildScanAndPushImage:
     name: Build and push the docker image.
     runs-on: ubuntu-latest
@@ -25,7 +12,6 @@ jobs:
       run:
         working-directory: hasher
     permissions: write-all
-    needs: Test
     steps:
       - name: Checkout code
         uses: actions/checkout@master
@@ -74,10 +60,70 @@ jobs:
       - name: Build and push the Docker image
         uses: docker/build-push-action@v4
         with:
+          file: hasher/Dockerfile
           push: true
           tags: |
             mbouzayeni/hasher:${{ steps.calculate_tag.outputs.tag }}
-          # cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
-          # cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
-  # DeployCanary:
-  # DeployToProduction:
+          cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
+          cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
+    outputs:
+      imageTag: ${{ steps.calculate_tag.outputs.tag }}      
+  Test:
+    name: Run Unit Tests.
+    runs-on: ubuntu-latest
+    needs: BuildScanAndPushImage
+    permissions:
+     contents: 'read'
+     id-token: 'write'
+    defaults:
+      run:
+        working-directory: hasher
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@master
+    - name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@v1'
+      with:
+        workload_identity_provider: 'projects/334800888869/locations/global/workloadIdentityPools/github-actions/providers/github-actions-oidc'
+        service_account: '334800888869-compute@developer.gserviceaccount.com'
+        project_id: playground-s-11-34f69086
+        cleanup_credentials: false
+    - name: Connect to GKE
+      uses: google-github-actions/get-gke-credentials@v0
+      with:
+        cluster_name: ${{ env.CLUSTER }}
+        location: ${{ env.CLUSTER_ZONE }}
+
+    - name: Update the image tag & the number of canary replicas to 1
+      uses: cschleiden/replace-tokens@v1
+      with:
+        files: '["hasher/hasher-canary-manifest.yml"]'
+        tokenPrefix: __
+        tokenSuffix: __
+      env:
+        TAG: ${{ needs.BuildScanAndPushImage.outputs.imageTag }}
+        REPLICAS: 1
+    - name: Deploy to the gke cluster
+      run: kubectl apply -f hasher-canary-manifest.yml
+    - name: Replace the URI in the test file
+      uses: cschleiden/replace-tokens@v1
+      with:
+        files: '["hasher/tests/unit_test.rb"]'
+        tokenPrefix: __
+        tokenSuffix: __
+      env:
+        URI: "'http://34.79.77.180:30002'"
+    - name: Run tests
+      run: |
+        ruby tests/unit_test.rb
+    - name: Update image tag & the number of canary replicas to 0 to delete it
+      uses: cschleiden/replace-tokens@v1
+      with:
+        files: '["rng/hasher-canary-manifest.yml"]'
+        tokenPrefix: __
+        tokenSuffix: __
+      env:
+        TAG: ${{ needs.BuildScanAndPushImage.outputs.imageTag }}
+        REPLICAS: 0   
+    - name: Delete rng-canary
+      run: kubectl apply -f hasher-canary-manifest.yml

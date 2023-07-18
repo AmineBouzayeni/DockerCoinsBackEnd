@@ -65,8 +65,8 @@ jobs:
           push: true
           tags: |
             mbouzayeni/rng:${{ steps.calculate_tag.outputs.tag }}
-          # cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
-          # cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
+          cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
+          cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
     outputs:
       imageTag: ${{ steps.calculate_tag.outputs.tag }}      
   Test:
