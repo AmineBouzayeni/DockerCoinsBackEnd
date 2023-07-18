@@ -21,7 +21,7 @@ metadata:
   labels:
     app: hasher-canary
 spec:
-  replicas: 2
+  replicas: __REPLICAS__
   selector:
     matchLabels:
       app: hasher-canary
@@ -32,6 +32,6 @@ spec:
     spec:
       containers:
       - name: hasher
-        image: mbouzayeni/hasher:1.0
+        image: mbouzayeni/hasher:__TAG__
         ports:
         - containerPort: 80
