@@ -1,23 +1,11 @@
 name: Dockercoins CI/CD rng component
 run-name: Dockercoins rng CI/CD
 on: [push]
+env:
+  CLUSTER: dockercoins-cluster
+  CLUSTER_ZONE: europe-west1-b
+
 jobs:
-  Test:
-    name: Run Unit Tests.
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: rng
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@master
-    - name: Start ephemeral rng instance
-      run: |
-        pip install -r requirement.txt
-        python rng.py
-    - name: Unit Test Rng
-      run: |
-        pytest
   BuildScanAndPushImage:
     name: Build and push the docker image.
     runs-on: ubuntu-latest
@@ -25,7 +13,6 @@ jobs:
       run:
         working-directory: rng
     permissions: write-all
-    needs: Test
     steps:
       - name: Checkout code
         uses: actions/checkout@master
@@ -74,10 +61,71 @@ jobs:
       - name: Build and push the Docker image
         uses: docker/build-push-action@v4
         with:
+          file: rng/Dockerfile
           push: true
           tags: |
             mbouzayeni/rng:${{ steps.calculate_tag.outputs.tag }}
           # cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
           # cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
-  # DeployCanary:
-  # DeployToProduction:
+    outputs:
+      imageTag: ${{ steps.calculate_tag.outputs.tag }}      
+  Test:
+    name: Run Unit Tests.
+    runs-on: ubuntu-latest
+    needs: BuildScanAndPushImage
+    permissions:
+     contents: 'read'
+     id-token: 'write'
+    defaults:
+      run:
+        working-directory: rng
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@master
+    - name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@v1'
+      with:
+        workload_identity_provider: 'projects/334800888869/locations/global/workloadIdentityPools/github-actions/providers/github-actions-oidc'
+        service_account: '334800888869-compute@developer.gserviceaccount.com'
+        project_id: playground-s-11-34f69086
+        cleanup_credentials: false
+    - name: Connect to GKE
+      uses: google-github-actions/get-gke-credentials@v0
+      with:
+        cluster_name: ${{ env.CLUSTER }}
+        location: ${{ env.CLUSTER_ZONE }}
+
+    - name: Update the image tag & the number of canary replicas to 1
+      uses: cschleiden/replace-tokens@v1
+      with:
+        files: '["rng/rng-canary-manifest.yml"]'
+        tokenPrefix: __
+        tokenSuffix: __
+      env:
+        TAG: ${{ needs.BuildScanAndPushImage.outputs.imageTag }}
+        REPLICAS: 1
+    - name: Deploy to the gke cluster
+      run: kubectl apply -f rng-canary-manifest.yml
+    - name: Replace the URI in the test file
+      uses: cschleiden/replace-tokens@v1
+      with:
+        files: '["rng/tests/unit_test.py"]'
+        tokenPrefix: __
+        tokenSuffix: __
+      env:
+        URI: "'http://34.79.77.180:30002'"
+    - name: Run tests
+      run: |
+        pip install pytest
+        pytest
+    - name: Update image tag & the number of canary replicas to 0 to delete it
+      uses: cschleiden/replace-tokens@v1
+      with:
+        files: '["rng/rng-canary-manifest.yml"]'
+        tokenPrefix: __
+        tokenSuffix: __
+      env:
+        TAG: ${{ needs.BuildScanAndPushImage.outputs.imageTag }}
+        REPLICAS: 0   
+    - name: Delete rng-canary
+      run: kubectl apply -f rng-canary-manifest.yml
