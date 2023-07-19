@@ -1,25 +1,25 @@
-name: Dockercoins CI/CD reids component
-run-name: Dockercoins redis CI/CD
+name: Dockercoins backend CI/CD
+run-name: Dockercoins backend CI/CD
 on: [push]
 env:
-  CLUSTER: dockercoins-cluster
+  CLUSTER_NAME: dockercoins-cluster
   CLUSTER_ZONE: europe-west1-b
-  PROJECT_NAME: playground-s-11-937fc184
-  TEST_NODE_IP: "34.140.19.46"
-  TEST_PORT: 30003
+  PROJECT_NAME: playground-s-11-4ced36c5
+  TEST_NODE_IP: "34.79.154.98"
+  HASHER_TEST_PORT: "30001"
+  RNG_TEST_PORT: "30002"
+  REDIS_TEST_PORT: "30003"
 
 jobs:
   BuildScanAndPushImage:
     name: Build and push the docker image.
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: redis_server
     permissions: write-all
     steps:
-      
+
       - name: Checkout code
         uses: actions/checkout@master
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
@@ -39,7 +39,7 @@ jobs:
           tag_name: ${{ steps.get_current_version.outputs.currentVersion }}
           release_name: Release ${{ steps.get_current_version.outputs.currentVersion }}
           body: |
-            Hasher version ${{ steps.get_current_version.outputs.currentVersion }}.
+            Backend version ${{ steps.get_current_version.outputs.currentVersion }}.
           draft: false
           prerelease: false
 
@@ -66,25 +66,53 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push the Docker image
+      - name: Build and push the hasher Docker image
+        uses: docker/build-push-action@v4
+        with:
+          file: hasher/Dockerfile
+          push: true
+          tags: |
+            mbouzayeni/hasher:${{ steps.calculate_tag.outputs.tag }}
+          cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
+          cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
+      
+      - name: Build and push the rng Docker image
+        uses: docker/build-push-action@v4
+        with:
+          file: rng/Dockerfile
+          push: true
+          tags: |
+            mbouzayeni/rng:${{ steps.calculate_tag.outputs.tag }}
+          cache-from: type=registry,ref=mbouzayeni/rng:buildcache
+          cache-to: type=registry,ref=mbouzayeni/rng:buildcache,mode=max
+
+      - name: Build and push the redis Docker image
         uses: docker/build-push-action@v4
         with:
           file: redis_server/Dockerfile
           push: true
           tags: |
             mbouzayeni/redis:${{ steps.calculate_tag.outputs.tag }}
-          cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
-          cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
+          cache-from: type=registry,ref=mbouzayeni/redis:buildcache
+          cache-to: type=registry,ref=mbouzayeni/redis:buildcache,mode=max          
+          
+      - name: Build and push the worker Docker image
+        uses: docker/build-push-action@v4
+        with:
+          file: worker/Dockerfile
+          push: true
+          tags: |
+            mbouzayeni/worker:${{ steps.calculate_tag.outputs.tag }}
+          cache-from: type=registry,ref=mbouzayeni/worker:buildcache
+          cache-to: type=registry,ref=mbouzayeni/worker:buildcache,mode=max    
     outputs:
       imageTag: ${{ steps.calculate_tag.outputs.tag }}
+      currentBranch: ${{ steps.current_branch.outputs.branch }}
 
   Test:
-    name: Run Smoke Tests.
+    name: Run Smoke/Unit Tests.
     runs-on: ubuntu-latest
     needs: BuildScanAndPushImage
-    defaults:
-      run:
-        working-directory: redis_server
     steps:
     - name: Checkout code
       uses: actions/checkout@master
@@ -109,12 +137,15 @@ jobs:
 
     - name: copy the manifest file
       run: |
-        cp redis-canary-manifest.yml redis-canary-manifest-delete.yml
+        cp hasher/hasher-canary-manifest.yml hasher/hasher-canary-manifest-delete.yml
+        cp rng/rng-canary-manifest.yml rng/rng-canary-manifest-delete.yml
+        cp redis_server/redis-canary-manifest.yml redis_server/redis-canary-manifest-delete.yml
+        cp worker/worker-canary-manifest.yml worker/worker-canary-manifest-delete.yml
 
     - name: Update the image tag & the number of canary replicas to 1
       uses: cschleiden/replace-tokens@v1
       with:
-        files: '["redis_server/redis-canary-manifest.yml"]'
+        files: '["hasher/hasher-canary-manifest.yml", "rng/rng-canary-manifest.yml", "redis_server/redis-canary-manifest.yml", "worker/worker-canary-manifest.yml"]'
         tokenPrefix: __
         tokenSuffix: __
       env:
@@ -122,32 +153,54 @@ jobs:
         REPLICAS: 1
 
     - name: Deploy to the gke cluster
-      run: kubectl apply -f redis-canary-manifest.yml
+      run: |
+        kubectl apply -f hasher/hasher-canary-manifest.yml 
+        kubectl apply -f rng/rng-canary-manifest.yml
+        kubectl apply -f redis_server/redis-canary-manifest.yml
+        kubectl apply -f worker/worker-canary-manifest.yml
 
     - name: Replace the URI in the test file
       uses: cschleiden/replace-tokens@v1
       with:
-        files: '["redis_server/tests/smoke_test.py"]'
+        files: '["hasher/tests/smoke_test.rb", "redis_server/tests/smoke_test.py", "rng/tests/smoke_test.py"]'
         tokenPrefix: __
         tokenSuffix: __
       env:
-        URI: "'${{ env.TEST_NODE_IP }}'"
-        PORT: ${{ env.TEST_PORT }}
+        IP: ${{ env.TEST_NODE_IP }}
+        HASHER_TEST_PORT: ${{ env.HASHER_TEST_PORT }}
+        RNG_TEST_PORT: ${{ env.RNG_TEST_PORT }}
+        REDIS_TEST_PORT: ${{ env.REDIS_TEST_PORT }}
 
-    - name: Run Smoke tests
+    - name: Run tests
       run: |
+        echo "Installing some prerequisite to run tests"
         pip install pytest redis
-        pytest
+
+        echo "Running Smoke Tests for the Hasher component"
+        ruby hasher/tests/smoke_test.rb
+
+        echo "Running Smoke Tests for Redis Server component"
+        cd redis_server/ && pytest
+
+        echo "Running Smoke Tests for the Rng component"
+        cd ../rng && pytest
+
+        echo "Running Unit Tests for the Worker component"
+        cd ../worker && pytest
 
     - name: Update image tag & the number of canary replicas to 0 to delete it
       uses: cschleiden/replace-tokens@v1
       with:
-        files: '["redis_server/redis-canary-manifest-delete.yml"]'
+        files: '["hasher/hasher-canary-manifest-delete.yml", "rng/rng-canary-manifest-delete.yml", "redis_server/redis-canary-manifest-delete.yml", "worker/worker-canary-manifest-delete.yml"]'
         tokenPrefix: __
         tokenSuffix: __
       env:
         TAG: ${{ needs.BuildScanAndPushImage.outputs.imageTag }}
         REPLICAS: 0
-         
-    - name: Delete redis-canary
-      run: kubectl apply -f redis-canary-manifest-delete.yml
+           
+    - name: Delete rng-canary
+      run: |
+        kubectl apply -f hasher/hasher-canary-manifest-delete.yml 
+        kubectl apply -f rng/rng-canary-manifest-delete.yml 
+        kubectl apply -f redis_server/redis-canary-manifest-delete.yml 
+        kubectl apply -f worker/worker-canary-manifest-delete.yml
