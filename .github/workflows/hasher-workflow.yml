@@ -65,7 +65,8 @@ jobs:
           cache-from: type=registry,ref=mbouzayeni/hasher:buildcache
           cache-to: type=registry,ref=mbouzayeni/hasher:buildcache,mode=max
     outputs:
-      imageTag: ${{ steps.calculate_tag.outputs.tag }}      
+      imageTag: ${{ steps.calculate_tag.outputs.tag }}
+      currentBranch: ${{ steps.current_branch.outputs.branch }}
   Test:
     name: Run Smoke Tests.
     runs-on: ubuntu-latest
