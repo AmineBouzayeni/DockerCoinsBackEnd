@@ -5,6 +5,8 @@ env:
   CLUSTER_NAME: dockercoins-cluster
   CLUSTER_ZONE: europe-west1-b
   PROJECT_NAME: playground-s-11-937fc184
+  TEST_NODE_IP: "34.140.19.46"
+  TEST_PORT: "30002"
 
 jobs:
   BuildScanAndPushImage:
@@ -82,9 +84,6 @@ jobs:
     name: Run Smoke Tests.
     runs-on: ubuntu-latest
     needs: BuildScanAndPushImage
-    permissions:
-     contents: 'read'
-     id-token: 'write'
     defaults:
       run:
         working-directory: rng
@@ -135,7 +134,7 @@ jobs:
         tokenPrefix: __
         tokenSuffix: __
       env:
-        URI: "'http://34.79.77.180:30002'"
+        URI: "'http://${{ env.TEST_NODE_IP }}:${{ env.TEST_PORT }}'"
 
     - name: Run Smoke tests
       run: |
